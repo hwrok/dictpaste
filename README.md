@@ -16,6 +16,8 @@ Intel Macs work but transcription will be noticeably slower without Metal GPU ac
 
 ### install
 
+The installer prompts you to pick a hotkey and recording mode (toggle or hold-to-talk).
+
 yolo method:
 
 ```shell
@@ -29,8 +31,6 @@ curl -fsSL https://raw.githubusercontent.com/hwrok/dictpaste/main/mac/install-di
 less install-dictpaste.zsh   # satisfy your paranoia
 zsh install-dictpaste.zsh
 ```
-
-The installer prompts you to pick a hotkey and recording mode (toggle or hold-to-talk).
 
 ### usage
 
