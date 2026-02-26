@@ -1,6 +1,6 @@
 # dictpaste — Local Dictation on macOS (Whisper.cpp + Hammerspoon)
 
-Local speech-to-text. Hotkey toggles recording (or hold-to-talk). Transcribes via Metal GPU, pastes at cursor. No cloud, no always-on mic.
+Local speech-to-text. Hotkey toggles recording (or hold-to-talk). Transcribes via Metal GPU, pastes at cursor.
 
 ## macOS (Apple Silicon)
 
