@@ -6,15 +6,13 @@ Local speech-to-text. Hotkey toggles recording (or hold-to-talk). Transcribes vi
 
 Intel Macs work but transcription will be noticeably slower without Metal GPU acceleration.
 
-### dependencies
+### dependencies (the installer handles all of these except Homebrew)
 
 - [Homebrew](https://brew.sh) (only prereq — install it first if you haven't)
 - `whisper-cpp` — local speech-to-text engine (Metal GPU on Apple Silicon)
 - `sox` — mic recording
 - [Hammerspoon](https://www.hammerspoon.org/) — hotkey binding + automation
 - `ggml-large-v3-turbo` model (~1.5GB) — downloaded automatically
-
-The installer handles all of these except Homebrew.
 
 ### install
 
