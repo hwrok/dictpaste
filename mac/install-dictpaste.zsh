@@ -8,7 +8,7 @@
 #
 # Prerequisites:
 #   - macOS with Homebrew installed
-#   - Apple Silicon (Intel works but transcription will be slower)
+#   - Apple Silicon (Intel Macs are not supported)
 #
 # What this script does:
 #   1. Installs whisper-cpp and sox via Homebrew
@@ -32,9 +32,15 @@ set -euo pipefail
 # Reattach stdin to terminal so interactive prompts work when piped from curl
 exec < /dev/tty
 
-model_url="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
+brew_prefix="/opt/homebrew"
+
+# --- Model config (update these when switching models) ---
+model_name="ggml-large-v3-turbo.bin"
+model_sha256="1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69"
 model_dir="$HOME/.whisper"
-model_path="$model_dir/ggml-large-v3-turbo.bin"
+model_path="$model_dir/$model_name"
+model_url="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$model_name"
+
 hs_config_dir="$HOME/.hammerspoon"
 hs_init="$hs_config_dir/init.lua"
 hs_module="$hs_config_dir/dictpaste.lua"
@@ -149,6 +155,10 @@ pick_mode
 
 # --- Preflight ---
 
+if [[ "$(uname -m)" != "arm64" ]]; then
+  error "dictpaste requires Apple Silicon. Intel Macs are not supported."
+fi
+
 if ! command -v brew &>/dev/null; then
   error "Homebrew not found. Install it first: https://brew.sh"
 fi
@@ -170,10 +180,26 @@ fi
 mkdir -p "$model_dir"
 
 if [[ -f "$model_path" ]]; then
-  info "Model already exists in $model_dir/..., skipping download."
-else
+  info "Verifying existing model checksum..."
+  actual=$(shasum -a 256 "$model_path" | awk '{print $1}')
+  if [[ "$actual" != "$model_sha256" ]]; then
+    warn "Existing model failed checksum. Re-downloading..."
+    rm "$model_path"
+  else
+    info "Model already exists and verified, skipping download."
+  fi
+fi
+
+if [[ ! -f "$model_path" ]]; then
   info "Downloading whisper large-v3-turbo model (~1.5GB)..."
-  curl -L --progress-bar -o "$model_path" "$model_url"
+  curl -L --progress-bar -o "$model_path.tmp" "$model_url"
+  info "Verifying download checksum..."
+  actual=$(shasum -a 256 "$model_path.tmp" | awk '{print $1}')
+  if [[ "$actual" != "$model_sha256" ]]; then
+    rm -f "$model_path.tmp"
+    error "Downloaded model failed checksum — corrupted or incomplete download. Try again."
+  fi
+  mv "$model_path.tmp" "$model_path"
 fi
 
 # --- Hammerspoon config ---
@@ -183,11 +209,16 @@ mkdir -p "$hs_config_dir"
 # Write dictpaste.lua (always overwrite — this file is ours)
 info "Writing $hs_module..."
 
-cat > "$hs_module" << 'LUA'
+cat > "$hs_module" << LUA_HEAD
 local recording = false
 local recTask = nil
 local tmpfile = "/tmp/dictpaste.wav"
-local model = os.getenv("HOME") .. "/.whisper/ggml-large-v3-turbo.bin"
+local model = os.getenv("HOME") .. "/.whisper/$model_name"
+local whisperBin = "$brew_prefix/bin/whisper-cli"
+local recBin = "$brew_prefix/bin/rec"
+LUA_HEAD
+
+cat >> "$hs_module" << 'LUA'
 
 local logDir = os.getenv("HOME") .. "/Library/Logs/dictpaste"
 local logFile = logDir .. "/dictpaste.log"
@@ -240,7 +271,7 @@ local function stopRecording()
   hs.alert.closeAll()
   hs.alert.show("⏳ Transcribing…", 9999)
 
-  hs.task.new("/opt/homebrew/bin/whisper-cli",
+  hs.task.new(whisperBin,
     function(_, stdout, _)
       local text = cleanTranscript(stdout)
       if #text > 0 then
@@ -256,7 +287,7 @@ end
 
 local function startRecording()
   recording = true
-  recTask = hs.task.new("/opt/homebrew/bin/rec", nil,
+  recTask = hs.task.new(recBin, nil,
     {"-q", "-r", "16000", "-c", "1", "-b", "16", tmpfile})
   recTask:start()
   showRecordingAlert()

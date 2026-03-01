@@ -4,7 +4,7 @@ Local speech-to-text. Hotkey toggles recording (or hold-to-talk). Transcribes vi
 
 ## macOS (Apple Silicon)
 
-Intel Macs work but transcription will be noticeably slower without Metal GPU acceleration.
+Requires Apple Silicon. Intel Macs are not supported.
 
 ### dependencies (the installer handles all of these except Homebrew)
 
