@@ -103,7 +103,7 @@ pick_hotkey() {
       fi
 
       # Format into lua table: "cmd, ctrl, alt" -> {"cmd", "ctrl", "alt"}
-      hs_mods="{$(echo "$custom_mods" | sed 's/[[:space:]]*,[[:space:]]*/", "/g' | sed 's/^/"/;s/$/"/')}"
+      hs_mods="{$(echo "$custom_mods" | sed 's/[[:space:]]*,[[:space:]]*/", "/g' | sed 's/[[:space:]]//g' | sed 's/^/"/;s/$/"/')}"
       hs_key="$custom_key"
       hotkey_display="$(echo "$custom_mods" | sed 's/alt/Opt/g;s/cmd/Cmd/g;s/ctrl/Ctrl/g;s/shift/Shift/g' | sed 's/,[[:space:]]*/+/g')+$(echo "$custom_key" | sed 's/.*/\u&/')"
 
@@ -211,6 +211,7 @@ info "Writing $hs_module..."
 
 cat > "$hs_module" << LUA_HEAD
 local recording = false
+local transcribing = false
 local recTask = nil
 local tmpfile = "/tmp/dictpaste.wav"
 local model = os.getenv("HOME") .. "/.whisper/$model_name"
@@ -266,26 +267,35 @@ local function showRecordingAlert()
 end
 
 local function stopRecording()
+  if not recording then return end
   recording = false
+  transcribing = true
   if recTask then recTask:terminate() end
   hs.alert.closeAll()
   hs.alert.show("⏳ Transcribing…", 9999)
 
   hs.task.new(whisperBin,
-    function(_, stdout, _)
+    function(exitCode, stdout, stderr)
+      transcribing = false
+      hs.alert.closeAll()
+      if exitCode ~= 0 then
+        hs.alert.show("❌ Transcription failed", 3)
+        appendLog("ERROR (exit " .. exitCode .. "): " .. (stderr or ""))
+        return
+      end
       local text = cleanTranscript(stdout)
       if #text > 0 then
         appendLog(text)
         hs.pasteboard.setContents(text)
         hs.eventtap.keyStroke({"cmd"}, "v")
       end
-      hs.alert.closeAll()
     end,
     {"-m", model, "--no-timestamps", "-f", tmpfile}
   ):start()
 end
 
 local function startRecording()
+  if transcribing then return end
   recording = true
   recTask = hs.task.new(recBin, nil,
     {"-q", "-r", "16000", "-c", "1", "-b", "16", tmpfile})
