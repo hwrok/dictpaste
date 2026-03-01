@@ -170,7 +170,7 @@ fi
 mkdir -p "$model_dir"
 
 if [[ -f "$model_path" ]]; then
-  info "Model already exists at $model_path, skipping download."
+  info "Model already exists in $model_dir/..., skipping download."
 else
   info "Downloading whisper large-v3-turbo model (~1.5GB)..."
   curl -L --progress-bar -o "$model_path" "$model_url"
@@ -225,10 +225,20 @@ local function cleanTranscript(text)
   return text
 end
 
+local function showRecordingAlert()
+  local msg = hs.styledtext.new("● Recording", {
+    font = { name = ".AppleSystemUIFont", size = 27 },
+    color = { white = 1 },
+  })
+  msg = msg:setStyle({ color = { red = 1, green = 0, blue = 0 } }, 1, 1)
+  hs.alert.show(msg, 9999)
+end
+
 local function stopRecording()
   recording = false
   if recTask then recTask:terminate() end
-  hs.alert.show("Transcribing…")
+  hs.alert.closeAll()
+  hs.alert.show("⏳ Transcribing…", 9999)
 
   hs.task.new("/opt/homebrew/bin/whisper-cli",
     function(_, stdout, _)
@@ -249,7 +259,7 @@ local function startRecording()
   recTask = hs.task.new("/opt/homebrew/bin/rec", nil,
     {"-q", "-r", "16000", "-c", "1", "-b", "16", tmpfile})
   recTask:start()
-  hs.alert.show("● Recording")
+  showRecordingAlert()
 end
 
 LUA
@@ -300,13 +310,17 @@ echo "  Log:    ~/Library/Logs/dictpaste/dictpaste.log"
 echo ""
 echo "  IMPORTANT: Grant Hammerspoon these permissions in System Settings:"
 echo ""
-echo "  Hammerspoon will likely prompt for accessibility permissions on first run; grant:"
-echo "    → Privacy & Security → Accessibility → Hammerspoon ✓"
-echo "    You may need to restart Hammerspoon after granting this (menu bar item -> quit; cmd+space, search hammerspoon, open it)"
+echo "  - Hammerspoon will likely prompt for accessibility permissions on first run; grant:"
 echo ""
-echo "  However, it will not immediate prompt for Microphone, but it will likely prompt during first use of the hotkey -> transcription process"
-echo "    → Privacy & Security → Microphone → Hammerspoon ✓"
-echo "    Then, you will need to restart Hammerspoon as above"
+echo "      → Privacy & Security → Accessibility → Hammerspoon ✓"
+echo "      → You may need to restart Hammerspoon after granting this..."
+echo "          → (menu bar item → quit; cmd+space, search hammerspoon, open it)"
 echo ""
-echo "  Then click the Hammerspoon menu bar icon → Reload Config."
+echo "  - However, it will not immediate prompt for Microphone, but it will" 
+echo "    likely prompt during first use of the hotkey -> transcription process:"
+echo ""
+echo "        → Privacy & Security → Microphone → Hammerspoon ✓"
+echo "        → Then, you will need to restart Hammerspoon as above"
+echo ""
+echo "  - Then, click the Hammerspoon menu bar icon → Reload Config."
 echo ""
