@@ -6,6 +6,10 @@ Local speech-to-text. Hotkey toggles recording (or hold-to-talk). Transcribes vi
 
 Requires Apple Silicon. Intel Macs are not supported.
 
+## Windows
+
+There's a [Windows version](windows/README.md) using AutoHotkey + CUDA (CPU fallback). Caveat: not tested to the same extent as the mac version.
+
 ### dependencies (the installer handles all of these except Homebrew)
 
 - [Homebrew](https://brew.sh) (only prereq — install it first if you haven't)
