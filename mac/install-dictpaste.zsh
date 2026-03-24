@@ -274,6 +274,12 @@ local function stopRecording()
   hs.alert.closeAll()
   hs.alert.show("⏳ Transcribing…", 9999)
 
+  -- Strip leading/trailing silence so whisper doesn't hallucinate on dead air
+  local trimmed = tmpfile .. ".trimmed.wav"
+  os.execute(recBin:gsub("rec$", "sox") .. " " .. tmpfile .. " " .. trimmed
+    .. " silence 1 0.1 0.5% reverse silence 1 0.1 0.5% reverse")
+  os.rename(trimmed, tmpfile)
+
   hs.task.new(whisperBin,
     function(exitCode, stdout, stderr)
       transcribing = false
@@ -290,7 +296,7 @@ local function stopRecording()
         hs.eventtap.keyStroke({"cmd"}, "v")
       end
     end,
-    {"-m", model, "--no-timestamps", "-f", tmpfile}
+    {"-m", model, "--no-timestamps", "--no-context", "-f", tmpfile}
   ):start()
 end
 
@@ -357,7 +363,7 @@ echo "      → Privacy & Security → Accessibility → Hammerspoon ✓"
 echo "      → You may need to restart Hammerspoon after granting this..."
 echo "          → (menu bar item → quit; cmd+space, search hammerspoon, open it)"
 echo ""
-echo "  - However, it will not immediate prompt for Microphone, but it will" 
+echo "  - However, it will not immediately prompt for Microphone, but it will" 
 echo "    likely prompt during first use of the hotkey -> transcription process:"
 echo ""
 echo "        → Privacy & Security → Microphone → Hammerspoon ✓"
