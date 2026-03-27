@@ -173,10 +173,14 @@ logFile := logDir "\dictpaste.log"
 logMaxBytes := 1048576  ; 1MB
 logMaxFiles := 5
 recording := false
+transcribing := false
 recPID := 0
 
 StartRecording() {
-    global recording, recPID, tmpFile
+    global recording, transcribing, recPID, tmpFile
+    if transcribing {
+        return
+    }
     recording := true
 
     ; sox recording via WASAPI
@@ -185,8 +189,12 @@ StartRecording() {
 }
 
 StopRecording() {
-    global recording, recPID, tmpFile, model
+    global recording, transcribing, recPID, tmpFile, model
+    if !recording {
+        return
+    }
     recording := false
+    transcribing := true
 
     ; Stop sox
     if recPID {
@@ -196,11 +204,25 @@ StopRecording() {
 
     ToolTip("Transcribing...")
 
+    ; Strip leading/trailing silence so whisper doesn't hallucinate on dead air
+    trimmed := tmpFile ".trimmed.wav"
+    RunWait('sox "' tmpFile '" "' trimmed '" silence 1 0.1 0.5% reverse silence 1 0.1 0.5% reverse',, "Hide")
+    FileMove(trimmed, tmpFile, true)
+
     ; Run whisper-cli synchronously, capture output
     shell := ComObject("WScript.Shell")
-    cmd := 'whisper-cli -m "' model '" --no-timestamps -f "' tmpFile '"'
-    exec := shell.Exec(A_ComSpec ' /c ' cmd)
+    cmd := 'whisper-cli -m "' model '" --no-timestamps -mc 0 -f "' tmpFile '"'
+    exec := shell.Exec(A_ComSpec ' /c ' cmd ' 2>&1')
     stdout := exec.StdOut.ReadAll()
+    exitCode := exec.ExitCode
+
+    if (exitCode != 0 || RegExMatch(stdout, "^error:")) {
+        ToolTip("❌ Transcription failed")
+        AppendLog("ERROR (exit " exitCode "): " stdout)
+        SetTimer(() => ToolTip(), -3000)
+        transcribing := false
+        return
+    }
 
     text := CleanTranscript(stdout)
 
@@ -211,6 +233,7 @@ StopRecording() {
     }
 
     ToolTip()  ; clear tooltip
+    transcribing := false
 }
 
 CleanTranscript(text) {
