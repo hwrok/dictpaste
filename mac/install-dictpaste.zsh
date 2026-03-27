@@ -284,7 +284,7 @@ local function stopRecording()
     function(exitCode, stdout, stderr)
       transcribing = false
       hs.alert.closeAll()
-      if exitCode ~= 0 then
+      if exitCode ~= 0 or (stderr and stderr:match("^error:")) then
         hs.alert.show("❌ Transcription failed", 3)
         appendLog("ERROR (exit " .. exitCode .. "): " .. (stderr or ""))
         return
@@ -296,7 +296,7 @@ local function stopRecording()
         hs.eventtap.keyStroke({"cmd"}, "v")
       end
     end,
-    {"-m", model, "--no-timestamps", "--no-context", "-f", tmpfile}
+    {"-m", model, "--no-timestamps", "-mc", "0", "-f", tmpfile}
   ):start()
 end
 
