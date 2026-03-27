@@ -274,9 +274,9 @@ local function stopRecording()
   hs.alert.closeAll()
   hs.alert.show("⏳ Transcribing…", 9999)
 
-  -- Strip leading/trailing silence so whisper doesn't hallucinate on dead air
+  -- Resample to 16kHz (whisper expects it) and strip leading/trailing silence
   local trimmed = tmpfile .. ".trimmed.wav"
-  os.execute(recBin:gsub("rec$", "sox") .. " " .. tmpfile .. " " .. trimmed
+  os.execute(recBin:gsub("rec$", "sox") .. " " .. tmpfile .. " -r 16000 " .. trimmed
     .. " silence 1 0.1 0.5% reverse silence 1 0.1 0.5% reverse")
   os.rename(trimmed, tmpfile)
 
@@ -304,7 +304,7 @@ local function startRecording()
   if transcribing then return end
   recording = true
   recTask = hs.task.new(recBin, nil,
-    {"-q", "-r", "16000", "-c", "1", "-b", "16", tmpfile})
+    {"-q", "-c", "1", "-b", "16", tmpfile})
   recTask:start()
   showRecordingAlert()
 end
