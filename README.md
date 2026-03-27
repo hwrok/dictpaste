@@ -61,3 +61,7 @@ dictpaste ships two whisper tweaks that make sense for short dictation but would
 - **`--no-context`** disables cross-segment context, where whisper uses the previous ~30s segment to inform the next one. For long recordings this improves coherence across segment boundaries. For dictation (a few seconds to maybe a minute), there's only one segment anyway, so the feature does nothing useful. Worse, it's the mechanism behind a known decoder bug where whisper's attention gets stuck on an earlier phrase and repeats it in a loop. Disabling it eliminates that bug with zero practical downside for dictpaste's use case.
 
 - **Sox silence trimming** strips leading and trailing silence from the audio before handing it to whisper. Whisper was trained heavily on YouTube content that ends with "Thank you" or "Thanks for watching", so it confidently hallucinates sign-off phrases when it hits trailing dead air. Removing the silence before transcription prevents this. Overhead on a short 16kHz mono clip is negligible (single-digit ms).
+
+### what about [Other Tool]'s built-in voice mode?
+
+- **Claude Code**: version 2.1.68+ has built-in push-to-talk STT. dictpaste is still generally the better option: it works system-wide (not just Claude's input box), transcription is fully local (no audio sent to Anthropic), and it's already wired into the OS-level paste flow.
