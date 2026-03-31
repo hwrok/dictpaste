@@ -206,7 +206,7 @@ StopRecording() {
 
     ; Strip leading/trailing silence so whisper doesn't hallucinate on dead air
     trimmed := tmpFile ".trimmed.wav"
-    RunWait('sox "' tmpFile '" "' trimmed '" silence 1 0.1 0.5% reverse silence 1 0.1 0.5% reverse',, "Hide")
+    RunWait('sox "' tmpFile '" "' trimmed '" silence 1 0.3 0.01% reverse silence 1 0.3 0.01% reverse',, "Hide")
     FileMove(trimmed, tmpFile, true)
 
     ; Run whisper-cli synchronously, capture output

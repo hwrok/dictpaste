@@ -266,18 +266,26 @@ local function showRecordingAlert()
   hs.alert.show(msg, 9999)
 end
 
-local function stopRecording()
-  if not recording then return end
-  recording = false
-  transcribing = true
-  if recTask then recTask:terminate() end
+local function transcribe()
   hs.alert.closeAll()
   hs.alert.show("⏳ Transcribing…", 9999)
 
-  -- Resample to 16kHz (whisper expects it) and strip leading/trailing silence
+  -- Resample to 16kHz mono (whisper expects it) and strip leading/trailing silence
+  local soxBin = recBin:gsub("rec$", "sox")
   local trimmed = tmpfile .. ".trimmed.wav"
-  os.execute(recBin:gsub("rec$", "sox") .. " " .. tmpfile .. " -r 16000 " .. trimmed
-    .. " silence 1 0.1 0.5% reverse silence 1 0.1 0.5% reverse")
+  os.execute(soxBin .. " " .. tmpfile .. " -r 16000 -c 1 " .. trimmed
+    .. " silence 1 0.3 0.01% reverse silence 1 0.3 0.01% reverse")
+
+  -- Guard against sox trimming everything (empty recording or below threshold)
+  local attr = hs.fs.attributes(trimmed)
+  if not attr or attr.size <= 44 then
+    transcribing = false
+    hs.alert.closeAll()
+    hs.alert.show("❌ No speech detected", 3)
+    appendLog("WARN: recording was empty after silence trim")
+    return
+  end
+
   os.rename(trimmed, tmpfile)
 
   hs.task.new(whisperBin,
@@ -300,10 +308,18 @@ local function stopRecording()
   ):start()
 end
 
+local function stopRecording()
+  if not recording then return end
+  recording = false
+  transcribing = true
+  if recTask then recTask:terminate() end
+  hs.alert.closeAll()
+end
+
 local function startRecording()
   if transcribing then return end
   recording = true
-  recTask = hs.task.new(recBin, nil,
+  recTask = hs.task.new(recBin, transcribe,
     {"-q", "-c", "1", "-b", "16", tmpfile})
   recTask:start()
   showRecordingAlert()
@@ -370,4 +386,8 @@ echo "        → Privacy & Security → Microphone → Hammerspoon ✓"
 echo "        → Then, you will need to restart Hammerspoon as above"
 echo ""
 echo "  - Then, click the Hammerspoon menu bar icon → Reload Config."
+echo ""
+echo "  NOTE: If you're reinstalling or updating, Hammerspoon won't pick up the"
+echo "  new dictpaste.lua automatically. Click the menu bar icon → Reload Config"
+echo "  (or restart Hammerspoon) for changes to take effect."
 echo ""
